@@ -24,6 +24,27 @@ long get_file_size(const char *filename)
     return st.st_size;
 }
 
+int send_all(int socket_fd, const void *buffer, size_t length) 
+{
+    const char *ptr = buffer;
+    size_t total_sent = 0;
+
+    while (total_sent < length) 
+    {
+        ssize_t sent = send(socket_fd, ptr + total_sent, length - total_sent, 0);
+
+        if (sent <= 0) 
+        {
+            perror("send failed");
+            return -1;
+        }
+
+        total_sent += sent;
+    }
+
+    return 0;
+}
+
 int main(int argc, char *argv[]) 
 {
     if (argc != 2) 
@@ -111,31 +132,122 @@ int main(int argc, char *argv[])
         }
 
         if (pid == 0)
-        {
-            //child process handles the client
-            close(server_fd);
+      if (pid == 0)
+{
+    // Child process handles the client
+    close(server_fd);
 
-            printf("Child process created to handle client.\n");
+    printf("Child process created to handle client.\n");
 
-            uint32_t request[2];
+    uint32_t request[2];
 
-            ssize_t received = recv(client_fd, request, sizeof(request), MSG_WAITALL);
+    ssize_t received = recv(client_fd, request, sizeof(request), MSG_WAITALL);
 
-            if (received != sizeof(request)) 
-            {
-                fprintf(stderr, "Failed to receive chunk request\n");
-                close(client_fd);
-                exit(1);
-            }
+    if (received != sizeof(request)) 
+    {
+        fprintf(stderr, "Failed to receive chunk request\n");
+        close(client_fd);
+        exit(1);
+    }
 
-            uint32_t chunk_no = ntohl(request[0]);
-            uint32_t total_chunks = ntohl(request[1]);
+    uint32_t chunk_no = ntohl(request[0]);
+    uint32_t total_chunks = ntohl(request[1]);
 
-            printf("Client requested chunk %u of %u\n", chunk_no, total_chunks);
+    printf("Client requested chunk %u of %u\n", chunk_no, total_chunks);
 
-            close(client_fd);
-            exit(0);
-        }
+    if (chunk_no == 0 || total_chunks == 0 || chunk_no > total_chunks)
+    {
+        fprintf(stderr, "Invalid chunk request\n");
+        close(client_fd);
+        exit(1);
+    }
+
+    long chunk_size = (file_size + total_chunks - 1) / total_chunks;
+    long offset = (chunk_no - 1) * chunk_size;
+    long remaining = file_size - offset;
+    long payload_size;
+
+    if (remaining < chunk_size)
+    {
+        payload_size = remaining;
+    }
+    else
+    {
+        payload_size = chunk_size;
+    }
+
+    if (offset >= file_size || payload_size <= 0)
+    {
+        fprintf(stderr, "Invalid chunk offset or payload size\n");
+        close(client_fd);
+        exit(1);
+    }
+
+    FILE *fp = fopen(input_file, "rb");
+
+    if (fp == NULL)
+    {
+        perror("fopen failed");
+        close(client_fd);
+        exit(1);
+    }
+
+    if (fseek(fp, offset, SEEK_SET) != 0)
+    {
+        perror("fseek failed");
+        fclose(fp);
+        close(client_fd);
+        exit(1);
+    }
+
+    char *buffer = malloc(payload_size);
+
+    if (buffer == NULL)
+    {
+        perror("malloc failed");
+        fclose(fp);
+        close(client_fd);
+        exit(1);
+    }
+
+    size_t bytes_read = fread(buffer, 1, payload_size, fp);
+
+    if (bytes_read != (size_t)payload_size)
+    {
+        fprintf(stderr, "fread failed or incomplete read\n");
+        free(buffer);
+        fclose(fp);
+        close(client_fd);
+        exit(1);
+    }
+
+    uint32_t header[2];
+    header[0] = htonl(chunk_no);
+    header[1] = htonl((uint32_t)payload_size);
+
+    if (send_all(client_fd, header, sizeof(header)) < 0)
+    {
+        free(buffer);
+        fclose(fp);
+        close(client_fd);
+        exit(1);
+    }
+
+    if (send_all(client_fd, buffer, payload_size) < 0)
+    {
+        free(buffer);
+        fclose(fp);
+        close(client_fd);
+        exit(1);
+    }
+
+    printf("Sent chunk %u of %u, size %ld bytes\n", chunk_no, total_chunks, payload_size);
+
+    free(buffer);
+    fclose(fp);
+    close(client_fd);
+    exit(0);
+}
         else
         {
             //Parent process closes client socket and continues accepting
