@@ -117,6 +117,22 @@ int main(int argc, char *argv[])
 
             printf("Child process created to handle client.\n");
 
+            uint32_t request[2];
+
+            ssize_t received = recv(client_fd, request, sizeof(request), MSG_WAITALL);
+
+            if (received != sizeof(request)) 
+            {
+                fprintf(stderr, "Failed to receive chunk request\n");
+                close(client_fd);
+                exit(1);
+            }
+
+            uint32_t chunk_no = ntohl(request[0]);
+            uint32_t total_chunks = ntohl(request[1]);
+
+            printf("Client requested chunk %u of %u\n", chunk_no, total_chunks);
+
             close(client_fd);
             exit(0);
         }
