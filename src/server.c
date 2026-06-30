@@ -25,8 +25,9 @@ long get_file_size(const char *filename)
 }
 
 int main(int argc, char *argv[]) 
+{
+    if (argc != 2) 
     {
-    if (argc != 2) {
         fprintf(stderr, "Usage: %s <input_file>\n", argv[0]);
         return 1;
     }
@@ -98,13 +99,13 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        printf(''Client connected.\n");
+        printf("Client connected.\n");
 
         pid_t pid = fork();
 
         if  (pid < 0)
         {
-            perrror("fork failed");
+            perror("fork failed");
             close(client_fd);
             continue;
         }
@@ -124,7 +125,7 @@ int main(int argc, char *argv[])
             //Parent process closes client socket and continues accepting
             close(client_fd);
 
-            while (waitpid(-1, NULL, WHOHANG) > 0)
+            while (waitpid(-1, NULL, WNOHANG) > 0)
                 {
                     //Clean up finished child process
                 }
