@@ -6,14 +6,17 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 #define PORT 9090
 #define BACKLOG 10
 
-long get_file_size(const char *filename) {
+long get_file_size(const char *filename) 
+{
     struct stat st;
 
-    if (stat(filename, &st) != 0) {
+    if (stat(filename, &st) != 0) 
+    {
         perror("stat failed");
         return -1;
     }
@@ -21,7 +24,8 @@ long get_file_size(const char *filename) {
     return st.st_size;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+    {
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <input_file>\n", argv[0]);
         return 1;
@@ -31,7 +35,8 @@ int main(int argc, char *argv[]) {
 
     long file_size = get_file_size(input_file);
 
-    if (file_size <= 0) {
+    if (file_size <= 0) 
+    {
         fprintf(stderr, "Invalid file size or file not found.\n");
         return 1;
     }
@@ -41,14 +46,16 @@ int main(int argc, char *argv[]) {
 
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
 
-    if (server_fd < 0) {
+    if (server_fd < 0) 
+    {
         perror("socket failed");
         return 1;
     }
 
     int opt = 1;
 
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) 
+    {
         perror("setsockopt failed");
         close(server_fd);
         return 1;
@@ -61,13 +68,15 @@ int main(int argc, char *argv[]) {
     server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = htons(PORT);
 
-    if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) 
+    {
         perror("bind failed");
         close(server_fd);
         return 1;
     }
 
-    if (listen(server_fd, BACKLOG) < 0) {
+    if (listen(server_fd, BACKLOG) < 0) 
+    {
         perror("listen failed");
         close(server_fd);
         return 1;
@@ -76,10 +85,52 @@ int main(int argc, char *argv[]) {
     printf("Server listening on port %d...\n", PORT);
     printf("Waiting for client connections...\n");
 
-    while (1) {
-        sleep(1);
-    }
+    while (1) 
+    {
+        struct sockaddr_in client_addr;
+        socklen_t client_len = sizeof(client_addr);
 
+        int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
+
+        if (client_fd < 0) 
+        {
+            perror("accept failed");
+            continue;
+        }
+
+        printf(''Client connected.\n");
+
+        pid_t pid = fork();
+
+        if  (pid < 0)
+        {
+            perrror("fork failed");
+            close(client_fd);
+            continue;
+        }
+
+        if (pid == 0)
+        {
+            //child process handles the client
+            close(server_fd);
+
+            printf("Child process created to handle client.\n");
+
+            close(client_fd);
+            exit(0);
+        }
+        else
+        {
+            //Parent process closes client socket and continues accepting
+            close(client_fd);
+
+            while (waitpid(-1, NULL, WHOHANG) > 0)
+                {
+                    //Clean up finished child process
+                }
+        }
+    }
+    
     close(server_fd);
     return 0;
 }
