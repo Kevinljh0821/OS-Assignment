@@ -132,7 +132,6 @@ int main(int argc, char *argv[])
         }
 
         if (pid == 0)
-      if (pid == 0)
 {
     // Child process handles the client
     close(server_fd);
