@@ -153,6 +153,7 @@ int main(int argc, char *argv[])
     uint32_t total_chunks = ntohl(request[1]);
 
     printf("Client requested chunk %u of %u\n", chunk_no, total_chunks);
+    printf("DEBUG 1\n");//debug
 
     if (chunk_no == 0 || total_chunks == 0 || chunk_no > total_chunks)
     {
@@ -183,6 +184,7 @@ int main(int argc, char *argv[])
     }
 
     FILE *fp = fopen(input_file, "rb");
+    printf("DEBUG 2\n");//debug
 
     if (fp == NULL)
     {
@@ -192,6 +194,7 @@ int main(int argc, char *argv[])
     }
 
     if (fseek(fp, offset, SEEK_SET) != 0)
+        printf("DEBUG 3\n");//debug
     {
         perror("fseek failed");
         fclose(fp);
@@ -210,6 +213,7 @@ int main(int argc, char *argv[])
     }
 
     size_t bytes_read = fread(buffer, 1, payload_size, fp);
+    printf("DEBUG 4: read %zu bytes\n", bytes_read);//debug
 
     if (bytes_read != (size_t)payload_size)
     {
@@ -224,6 +228,7 @@ int main(int argc, char *argv[])
     header[0] = htonl(chunk_no);
     header[1] = htonl((uint32_t)payload_size);
 
+    printf("DEBUG 5\n");//debug
     if (send_all(client_fd, header, sizeof(header)) < 0)
     {
         free(buffer);
@@ -232,6 +237,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    printf("DEBUG 6\n");//debug
     if (send_all(client_fd, buffer, payload_size) < 0)
     {
         free(buffer);
@@ -246,6 +252,7 @@ int main(int argc, char *argv[])
     fclose(fp);
     close(client_fd);
     exit(0);
+    printf("DEBUG 7\n");//debug
 }
         else
         {
