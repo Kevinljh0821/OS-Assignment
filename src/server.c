@@ -194,13 +194,13 @@ int main(int argc, char *argv[])
     }
 
     if (fseek(fp, offset, SEEK_SET) != 0)
-        printf("DEBUG 3\n");//debug
     {
         perror("fseek failed");
         fclose(fp);
         close(client_fd);
         exit(1);
     }
+    printf("DEBUG 3\n");//debug
 
     char *buffer = malloc(payload_size);
 
@@ -248,11 +248,13 @@ int main(int argc, char *argv[])
 
     printf("Sent chunk %u of %u, size %ld bytes\n", chunk_no, total_chunks, payload_size);
 
+    printf("DEBUG 7\n");//debug
+    
     free(buffer);
     fclose(fp);
     close(client_fd);
     exit(0);
-    printf("DEBUG 7\n");//debug
+    
 }
         else
         {
